@@ -9,3 +9,11 @@ def item_list(request):
         'items': Item.objects.all()
     }
     return render(request, "home-page.html", context)
+
+
+def checkout(request):
+    return render(request, 'checkout.html')
+
+
+def product(request):
+    return render(request, 'product.html')
