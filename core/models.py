@@ -25,6 +25,7 @@ class Item(models.Model):
     label = models.CharField(choices=LABEL_CHOICES, max_length=1)
     slug = models.SlugField()
     description = models.TextField()
+    inventory_quantity = models.IntegerField(default=0) ##TODO add inventory tracking and management
 
     def __str__(self):
         return self.title
@@ -32,12 +33,21 @@ class Item(models.Model):
     def get_absolute_url(self):
         return reverse("core:product", kwargs={'slug': self.slug})
 
+    def get_add_to_cart_url(self):
+        return reverse("core:add-to-cart", kwargs={'slug': self.slug})
+
+    def get_remove_from_cart_url(self):
+        return reverse("core:remove-from-cart", kwargs={'slug': self.slug})
+
 
 class OrderItem(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             on_delete=models.CASCADE)
+    ordered = models.BooleanField(default=False)
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
-
+    order_quantity = models.IntegerField(default=1)
     def __str__(self):
-        return self.title
+        return f"{self.order_quantity} of {self.item.title}"
 
 
 class Order(models.Model):
@@ -50,3 +60,4 @@ class Order(models.Model):
 
     def __str__(self):
         return self.user.username
+
