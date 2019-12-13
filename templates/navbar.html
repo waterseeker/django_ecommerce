@@ -1,9 +1,11 @@
+  {% load cart_template_tags %}
+
   <!-- Navbar -->
   <nav class="navbar fixed-top navbar-expand-lg navbar-light white scrolling-navbar">
     <div class="container">
 
       <!-- Brand -->
-      <a class="navbar-brand waves-effect" href="">
+      <a class="navbar-brand waves-effect" href="/">
         <strong class="blue-text">MDB</strong>
       </a>
 
@@ -18,6 +20,7 @@
 
         <!-- Left -->
         <ul class="navbar-nav mr-auto">
+        {% comment %}
           <li class="nav-item active">
             <a class="nav-link waves-effect" href="/">Home
               <span class="sr-only">(current)</span>
@@ -26,20 +29,40 @@
           <li class="nav-item">
             <a class="nav-link waves-effect" href="/checkout">Checkout</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link waves-effect" href="/product">Product</a>
-          </li>
+        {% endcomment %}
         </ul>
 
         <!-- Right -->
         <ul class="navbar-nav nav-flex-icons">
           <li class="nav-item">
+
+          {% if request.user.is_authenticated %}
             <a class="nav-link waves-effect">
-              <span class="badge red z-depth-1 mr-1"> 1 </span>
+              <span class="badge red z-depth-1 mr-1"> {{ request.user|cart_item_count }} </span>
               <i class="fas fa-shopping-cart"></i>
               <span class="clearfix d-none d-sm-inline-block"> Cart </span>
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="{% url 'account_logout'%}">
+              <span class="clearfix d-none d-sm-inline-block"> Logout </span>
+            </a>
+          </li>
+
+          {% else %}
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="{% url 'account_login'%}">
+              <span class="clearfix d-none d-sm-inline-block"> Login </span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="{% url 'account_signup'%}">
+              <span class="clearfix d-none d-sm-inline-block"> Signup </span>
+            </a>
+          </li>
+
+          {% endif %}
+
           <li class="nav-item">
             <a href="https://www.facebook.com/" class="nav-link waves-effect" target="_blank">
               <i class="fab fa-facebook-f"></i>
@@ -55,6 +78,8 @@
               <i class="fab fa-instagram"></i>
             </a>
           </li>
+
+
         </ul>
 
       </div>
