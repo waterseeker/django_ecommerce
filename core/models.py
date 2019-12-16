@@ -25,7 +25,8 @@ class Item(models.Model):
     label = models.CharField(choices=LABEL_CHOICES, max_length=1)
     slug = models.SlugField()
     description = models.TextField()
-    inventory_quantity = models.IntegerField(default=0) ##TODO add inventory tracking and management
+    # TODO add inventory tracking and management
+    inventory_quantity = models.IntegerField(default=0)
 
     def __str__(self):
         return self.title
@@ -46,8 +47,23 @@ class OrderItem(models.Model):
     ordered = models.BooleanField(default=False)
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     order_quantity = models.IntegerField(default=1)
+
     def __str__(self):
         return f"{self.order_quantity} of {self.item.title}"
+
+    def get_total_item_price(self):
+        return self.order_quantity * self.item.price
+
+    def get_total_discount_item_price(self):
+        return self.order_quantity * self.item.discount_price
+
+    def get_amount_saved_from_discount(self):
+        return self.get_total_item_price() - self.get_total_discount_item_price()
+
+    def get_final_price(self):
+        if self.item.discount_price:
+            return self.get_total_discount_item_price()
+        return self.get_total_item_price()
 
 
 class Order(models.Model):
@@ -61,3 +77,8 @@ class Order(models.Model):
     def __str__(self):
         return self.user.username
 
+    def get_total(self):
+        total = 0
+        for order_item in self.items.all():
+            total += order_item.get_final_price()
+        return total
