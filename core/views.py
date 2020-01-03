@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -7,6 +8,10 @@ from django.views.generic import ListView, DetailView, View
 from .models import Item, Order, OrderItem, BillingAddress
 from .forms import CheckoutForm
 from django.utils import timezone
+
+import stripe
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def products(request):
@@ -61,7 +66,20 @@ class CheckoutView(View):
 
 class PaymentView(View):
     def get(self, *args, **kwargs):
+        # order
         return render(self.request, "payment.html")
+
+    def post(self, *args, **kwargs):
+        order = Order.objects.get(user=self.request.user, ordered=False)
+        token = self.request.POST.get('stripeToken')
+        charge = stripe.Charge.create(
+            amount=order.get_total() * 100,  # value is in cents, so * 100 for dollars
+            currency='usd',
+            description='Example charge',
+            source=token,
+        )
+
+        order.ordered = True
 
 
 class HomeView(ListView):
