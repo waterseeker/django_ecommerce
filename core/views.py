@@ -5,7 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, View
-from .models import Item, Order, OrderItem, BillingAddress
+from .models import Item, Order, OrderItem, BillingAddress, Payment
 from .forms import CheckoutForm
 from django.utils import timezone
 
@@ -67,19 +67,82 @@ class CheckoutView(View):
 class PaymentView(View):
     def get(self, *args, **kwargs):
         # order
+        context = {'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY}
         return render(self.request, "payment.html")
 
     def post(self, *args, **kwargs):
         order = Order.objects.get(user=self.request.user, ordered=False)
         token = self.request.POST.get('stripeToken')
-        charge = stripe.Charge.create(
-            amount=order.get_total() * 100,  # value is in cents, so * 100 for dollars
-            currency='usd',
-            description='Example charge',
-            source=token,
-        )
+        amount = order.get_total() * 100  # this is * 100 because the amount is in cents
 
-        order.ordered = True
+        # try/except for error handling on the payment
+
+        try:
+            # Use Stripe's library to make requests...
+            charge = stripe.Charge.create(
+                amount=amount,
+                currency='usd',
+                source=token,
+            )
+
+            # create the payment
+            payment = Payment()
+            payment.stripe_charge_id = charge['id']
+            payment.user = self.request.user
+            payment.amount = amount
+            payment.save()
+
+            # assign the payment to the order
+            order.ordered = True
+            order.payment = payment
+            order.save()
+
+            # redirect user after the order is saved
+            messages.success(
+                self.request, "Your order was successfully placed. Thank you for your business!")
+            return redirect("/")
+
+        except stripe.error.CardError as e:
+            # Since it's a decline, stripe.error.CardError will be caught
+            body = e.json_body
+            err = body.get('error', {})
+            messages.error(self.request, f"{err.get('message')}")
+            return redirect("/")
+
+        except stripe.error.RateLimitError as e:
+            # Too many requests made to the API too quickly
+            messages.error(self.request, "Rate Limit Error")
+            return redirect("/")
+
+        except stripe.error.InvalidRequestError as e:
+            # Invalid parameters were supplied to Stripe's API
+            messages.error(self.request, "Invalid Parameter")
+            return redirect("/")
+
+        except stripe.error.AuthenticationError as e:
+            # Authentication with Stripe's API failed
+            # (maybe you changed API keys recently)
+            messages.error(self.request, "Not Authenticated")
+            return redirect("/")
+
+        except stripe.error.APIConnectionError as e:
+            # Network communication with Stripe failed
+            messages.error(self.request, "Network Error")
+            return redirect("/")
+
+        except stripe.error.StripeError as e:
+            # Display a very generic error to the user, and maybe send
+            # yourself an email
+            messages.error(
+                self.request, "Oops! Something went wrong. You were not charged. Please try again.")
+            return redirect("/")
+
+        except Exception as e:
+            # Something else happened, completely unrelated to Stripe
+            messages.error(
+                self.request, "A serious error occured. We have been notified.")
+            # send an e-mail to admin, letting them know they need to fix something
+            return redirect("/")
 
 
 class HomeView(ListView):
